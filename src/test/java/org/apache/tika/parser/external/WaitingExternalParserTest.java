@@ -40,7 +40,7 @@ import org.xml.sax.SAXException;
  */
 public class WaitingExternalParserTest
 {
-    private String[] command = {"cat", 
+    private String[] commandWithOutputFile = {"cat", 
         WaitingExternalParser.INPUT_FILE_TOKEN, 
         WaitingExternalParser.OUTPUT_FILE_TOKEN};
     private static HashMap<Pattern, String> extractionPatterns;
@@ -58,24 +58,24 @@ public class WaitingExternalParserTest
     }
     
     @Test
-    public void testExternalParser() throws IOException, SAXException, TikaException
+    public void testExternalParserMetadataExtraction() throws IOException, SAXException, TikaException
     {
         ExternalParser parser = new ExternalParser();
-        parser.setCommand(command);
+        parser.setCommand(commandWithOutputFile);
         parser.setMetadataExtractionPatterns(extractionPatterns);
-        testParser(parser);
+        testMetadataExtraction(parser);
     }
     
     @Test
-    public void testWaitingExternalParser() throws IOException, SAXException, TikaException
+    public void testWaitingExternalParserMetadataExtraction() throws IOException, SAXException, TikaException
     {
         WaitingExternalParser parser = new WaitingExternalParser();
-        parser.setCommand(command);
+        parser.setCommand(commandWithOutputFile);
         parser.setMetadataExtractionPatterns(extractionPatterns);
-        testParser(parser);
+        testMetadataExtraction(parser);
     }
 
-    private void testParser(AbstractParser parser) throws IOException, SAXException, TikaException
+    private void testMetadataExtraction(AbstractParser parser) throws IOException, SAXException, TikaException
     {
         /*
          * See comment: https://issues.apache.org/jira/browse/TIKA-634?focusedCommentId=14533184&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-14533184
@@ -92,6 +92,37 @@ public class WaitingExternalParserTest
         assertEquals(2, extractedMetadata.getValues(PBCore.INSTANTIATION_DURATION).length);
         String[] values = extractedMetadata.getValues(PBCore.INSTANTIATION_DATA_RATE);
         assertEquals(311, values.length);
+    }
+    
+    @Test
+    public void testWaitingExternalParserOutputExtraction() throws IOException, SAXException, TikaException
+    {
+        WaitingExternalParser parser = new WaitingExternalParser();
+        parser.setCommand("cat", WaitingExternalParser.INPUT_FILE_TOKEN);
+        testOutputExtraction(parser);
+    }
+    
+    @Test
+    public void testExternalParserOutputExtraction() throws IOException, SAXException, TikaException
+    {
+        ExternalParser parser = new ExternalParser();
+        parser.setCommand("cat", WaitingExternalParser.INPUT_FILE_TOKEN);
+        testOutputExtraction(parser);
+    }
+    
+    private void testOutputExtraction(AbstractParser parser) throws IOException, SAXException, TikaException
+    {
+        Metadata extractedMetadata = new Metadata();
+        String testFilePath = "/test-documents/testTxt.txt";
+        InputStream stream = this.getClass().getResourceAsStream(testFilePath);
+        ToTextContentHandler handler = new ToTextContentHandler();
+        parser.parse(stream, handler, extractedMetadata, new ParseContext());
+        String[] names = extractedMetadata.names();
+        String output = handler.toString();
+        assertFalse(output, output.isEmpty());
+        assertTrue(output.contains("a\r\naa"));
+        assertTrue(output.contains("Duration: 00:00:01.0, \r\n"));
+        assertEquals(0, names.length);
     }
 
 }
